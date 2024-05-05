@@ -994,7 +994,8 @@ class AccessControlHooks {
 	) {
 		/* Return array with two keys: visitors and editors */
 		$content = self::getContentPage( $ns, $title );
-		if ( strpos( $content, '* ' ) === 0 ) {
+		$list_found = strpos( $content, '*' );
+        if ($list_found!==false && $list_found < 200) {
 			$array = self::parseOldList( $content );
 		} else {
 			$array = self::parseNewList( $content );

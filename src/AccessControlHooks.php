@@ -1334,6 +1334,13 @@ class AccessControlHooks {
 	private static function userVerify( $rights ) {
 		global $wgActions, $wgAdminCanReadAll, $wgAccessControlInfo, $wgRequest;
 		$user = RequestContext::getMain()->getUser();
+
+		 // DIRTY hack, otherwise recent changes dont work
+		$title = $wgRequest->getText( 'title' );
+		if(strpos($title, 'Служебная')===0 || strpos($title, 'Special')===true){
+		    return true;
+		}
+
 		if ( empty( $rights[VIEW] ) && empty( $rights[EDIT] ) ) {
 			/* page is without limits */
 			return true;

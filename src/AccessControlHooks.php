@@ -1337,7 +1337,7 @@ class AccessControlHooks {
 
 		 // DIRTY hack, otherwise recent changes dont work
 		$title = $wgRequest->getText( 'title' );
-		if(strpos($title, 'Служебная')===0 || strpos($title, 'Special')===true){
+		if(strpos($title, 'Служебная:')===0 || strpos($title, 'Special:')===true){
 		    return true;
 		}
 

@@ -17,7 +17,6 @@
  * @license GPL-2.0-or-later
  */
 
-use MediaWiki\Content\ContentHandler;
 use MediaWiki\Context\RequestContext;
 use MediaWiki\EditPage\EditPage;
 use MediaWiki\MediaWikiServices;
@@ -981,7 +980,17 @@ class AccessControlHooks {
 		}
 		$page = MediaWikiServices::getInstance()->getWikiPageFactory()->newFromTitle( $gt );
 		$latestid = $page->getLatest();
-		$content = ContentHandler::getContentText( $page->getContent() );
+		$content = $page->getContent();
+		if ( $content === null ) {
+			return '';
+		}
+		if ( method_exists( $content, 'getText' ) ) {
+			$content = $content->getText();
+		} elseif ( method_exists( $content, 'serialize' ) ) {
+			$content = $content->serialize();
+		} else {
+			return '';
+		}
 		if ( is_array( $wgVerifyPage ) ) {
 			if ( !array_key_exists( $latestid, $wgVerifyPage ) ) {
 				$wgVerifyPage[ $latestid ] = true;

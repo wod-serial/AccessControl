@@ -17,7 +17,11 @@
  * @license GPL-2.0-or-later
  */
 
+use MediaWiki\Content\ContentHandler;
+use MediaWiki\Context\RequestContext;
+use MediaWiki\EditPage\EditPage;
 use MediaWiki\MediaWikiServices;
+use MediaWiki\Parser\Parser;
 use Wikimedia\Rdbms\IReadableDatabase;
 
 class AccessControlHooks {
@@ -163,9 +167,10 @@ class AccessControlHooks {
 		global $wgVerifyPage;
 
 		// $start = microtime(true) ; // START DEBUG TIMESTAMP
-		$articleName	= $parser->getTitle()->mTextform;
-		$articleNS	= $parser->getTitle()->mNamespace;
-		$articleLastRev	= $parser->getTitle()->getLatestRevId();
+		$title = $parser->getTitle();
+		$articleName	= $title->getText();
+		$articleNS	= $title->getNamespace();
+		$articleLastRev	= $title->getLatestRevID();
 		// self::printDebug( "$start onParserBeforeStrip start verify access to lastrevision=\"$articleLastRev\" of title=\"$articleName\" ns=\"$articleNS\"" ); // INFO DEBUG TIMESTAMP
 		if ( is_array( $wgVerifyPage ) ) {
 			if ( array_key_exists( $articleLastRev, $wgVerifyPage ) ) {
@@ -638,7 +643,7 @@ class AccessControlHooks {
 		global $wgActions, $wgAnonymousUser, $wgRequest, $wgAccessToHistory;
 		$user = RequestContext::getMain()->getUser();
 		if ( !$wgAnonymousUser ) {
-			if ( $user->mId === 0 ) {
+			if ( $user->getId() === 0 ) {
 				$wgActions['submit'] = false;
 				$wgActions['info'] = false;
 				$wgActions['raw'] = false;
@@ -704,7 +709,7 @@ class AccessControlHooks {
 		/* "page_namespace=8 AND page_title='fuckoff'" */
 		global $wgAdminCanReadAll;
 		$user = RequestContext::getMain()->getUser();
-		if ( $user->mId === 0 ) {
+		if ( $user->getId() === 0 ) {
 			/* Deny export for all anonymous */
 			// self::printDebug( microtime(true) . ' controlExportPage deny'); // INFO DEBUG TIMESTAMP
 			return false;
@@ -739,7 +744,7 @@ class AccessControlHooks {
 				// self::printDebug( microtime(true) . ' controlExportPage anonymous'); // INFO DEBUG TIMESTAMP
 				return false;
 			}
-			if ( array_key_exists( $user, $rights[EDIT] ) || array_key_exists( $user, $rights[VIEW] ) ) {
+			if ( array_key_exists( $user->getName(), $rights[EDIT] ) || array_key_exists( $user->getName(), $rights[VIEW] ) ) {
 				/* readonly user */
 				// self::printDebug( microtime(true) . ' controlExportPage readonly user'); // INFO DEBUG TIMESTAMP
 				return 2;
@@ -895,14 +900,15 @@ class AccessControlHooks {
 	) {
 		global $wgContLang;
 		$target = [];
+		$namespaceInfo = MediaWikiServices::getInstance()->getNamespaceInfo();
 		preg_match(
 			'/([A-Z].*?):/',
 			$string,
 			$match,
 			PREG_UNMATCHED_AS_NULL
 			);
-		if ( !is_array( $match ) ) {
-			$index = NamespaceInfo::getCanonicalIndex( strtolower( $match[1] ) );
+		if ( is_array( $match ) && array_key_exists( 1, $match ) && $match[1] !== null ) {
+			$index = $namespaceInfo->getCanonicalIndex( strtolower( $match[1] ) );
 			if ( $index === null ) {
 				// If is name of namespace invalid, or in localize form, is value of $index null
 				$pos = strpos( $string, ':' );
@@ -913,7 +919,7 @@ class AccessControlHooks {
 				} else {
 					// Name of namespace in localize form by current settings of MediaWiki, i.e. 'Uživatel'
 					$stringfortest = str_replace( " ", "_", substr( $string, 0, $pos ) );
-					foreach ( NamespaceInfo::getValidNamespaces() as $index ) {
+					foreach ( $namespaceInfo->getValidNamespaces() as $index ) {
 						if ( $wgContLang->getNsText( $index ) === $stringfortest ) {
 							$target['title'] = trim( str_replace( "$stringfortest:", '', $string ) );
 							$target['ns'] = $index;
@@ -963,7 +969,12 @@ class AccessControlHooks {
 		// remove magic keys
 		// TODO
 		// $start = microtime(true); // START DEBUG TIMESTAMP
-		$gt = Title::makeTitleSafe( $ns, $title, $fragment = '', $interwiki = '' );
+		$gt = MediaWikiServices::getInstance()->getTitleFactory()->makeTitleSafe(
+			$ns,
+			$title,
+			$fragment = '',
+			$interwiki = ''
+		);
 		if ( $gt === null || $gt->isSpecialPage() ) {
 			// Can't create WikiPage for special page
 			return '';
@@ -1006,12 +1017,12 @@ class AccessControlHooks {
 	/**
 	 * Function test if current user is logged or not.
 	 *
-	 * @param User $user
+	 * @param string $user
 	 *
 	 * @return bool|null
 	 */
 	private static function isUser( $user ) {
-		$title = Title::newFromText( $user, NS_USER );
+		$title = MediaWikiServices::getInstance()->getTitleFactory()->newFromText( $user, NS_USER );
 		if ( $title !== null ) {
 			return true;
 		}
